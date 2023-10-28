@@ -22,13 +22,48 @@ db.connect((err) => {
 
 app.use(bodyParser.json());
 
-app.post("/registros", (req, res) => {
-  const { name, quantidade_ml, data } = req.body;
+// Rota para inserir registros na tabela 'register'
+app.post("/registros/register", (req, res) => {
+  const { name, password } = req.body;
 
-  if (!name || !quantidade_ml || !data) {
+  if (!name || !password) {
     return res
       .status(400)
-      .json({ mensagem: "name, quantidade_ml e data são obrigatórios." });
+      .json({ mensagem: "name e password são obrigatórios." });
+  }
+
+  const novoRegistro = {
+    name,
+    password,
+  };
+
+  const sql =
+    "INSERT INTO register (name, password) VALUES (?, ?)";
+  const values = [name, password];
+
+  db.query(sql, values, (err, result) => {
+    if (err) {
+      console.error("Erro ao inserir registro na tabela 'register':", err);
+      return res
+        .status(500)
+        .json({ mensagem: "Erro ao registrar na tabela 'register'." });
+    }
+
+    novoRegistro.id = result.insertId;
+
+    // Agora, você tem o 'id' gerado para o usuário
+    res.status(201).json(novoRegistro);
+  });
+});
+
+// Rota para inserir registros na tabela 'register_water'
+app.post("/registros/register_water", (req, res) => {
+  const { name, quantidade_ml, data, register_id } = req.body;
+
+  if (!name || !quantidade_ml || !data || !register_id) {
+    return res
+      .status(400)
+      .json({ mensagem: "name, quantidade, data e register_id são obrigatórios." });
   }
 
   // Converter a data para o formato do MySQL (ano-mês-dia)
@@ -38,29 +73,46 @@ app.post("/registros", (req, res) => {
     name,
     quantidade_ml,
     data: dataFormatada, // Data no formato ano-mês-dia
+    register_id,
   };
 
-  const sql =
-    "INSERT INTO registro_agua (name, quantidade_ml, data) VALUES (?, ?, ?)";
-  const values = [name, quantidade_ml, dataFormatada];
-
-  db.query(sql, values, (err, result) => {
-    if (err) {
-      console.error("Erro ao inserir registro no banco de dados:", err);
-      return res
-        .status(500)
-        .json({ mensagem: "Erro ao registrar hidratação." });
+  // Certifique-se de que o 'register_id' seja válido, pois ele deve corresponder ao 'id' da tabela 'register'
+  const checkSql = "SELECT id, name FROM register WHERE id = ?";
+  db.query(checkSql, [register_id], (checkErr, checkResult) => {
+    if (checkErr || checkResult.length === 0) {
+      return res.status(400).json({ mensagem: "ID de registro inválido." });
     }
 
-    novoRegistro.id = result.insertId;
-    res.status(201).json(novoRegistro);
+    const nomeRegistro = checkResult[0].name;
+
+    // Verifique se o nome fornecido corresponde ao nome na tabela 'register'
+    if (name !== nomeRegistro) {
+      return res.status(400).json({ mensagem: "Nome de registro inválido." });
+    }
+
+    const insertSql =
+      "INSERT INTO register_water (name, quantity, data, register_id) VALUES (?, ?, ?, ?)";
+    const insertValues = [name, quantidade_ml, dataFormatada, register_id];
+
+    db.query(insertSql, insertValues, (err, result) => {
+      if (err) {
+        console.error("Erro ao inserir registro na tabela 'register_water':", err);
+        return res
+          .status(500)
+          .json({ mensagem: "Erro ao registrar na tabela 'register_water'." });
+      }
+
+      novoRegistro.id = result.insertId;
+      res.status(201).json(novoRegistro);
+    });
   });
 });
 
+// Rota para recuperar informações das duas tabelas
 app.get("/registros/:nome", (req, res) => {
   const { nome } = req.params;
   const sql =
-    'SELECT id, name, quantidade_ml, DATE_FORMAT(data, "%d/%m/%Y") AS data_formatada FROM registro_agua WHERE name = ?';
+    'SELECT r.id as register_id, r.name as register_name,  rw.quantity, DATE_FORMAT(rw.data, "%d/%m/%Y") AS data_formatada FROM register AS r LEFT JOIN register_water AS rw ON r.id = rw.register_id WHERE r.name = ?';
   db.query(sql, [nome], (err, result) => {
     if (err) {
       console.error("Erro ao consultar registros no banco de dados:", err);
