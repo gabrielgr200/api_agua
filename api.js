@@ -8,13 +8,12 @@ const port = process.env.PORT || 7000;
 
 app.use(
   cors({
-    origin: "*", // Defina o domínio específico que deseja permitir ou "*" para permitir qualquer origem
-    methods: "GET,HEAD,PUT,PATCH,POST,DELETE", // Métodos permitidos
+    origin: "*",
+    methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
     preflightContinue: false,
     optionsSuccessStatus: 204,
   })
 );
-
 
 const db = mysql.createConnection({
   host: "bancomysql.c1rmsxzyhbjb.us-east-2.rds.amazonaws.com",
@@ -33,7 +32,6 @@ db.connect((err) => {
 
 app.use(bodyParser.json());
 
-// Rota para inserir registros na tabela 'register'
 app.post("/registros/register", (req, res) => {
   const { name, password } = req.body;
 
@@ -48,8 +46,7 @@ app.post("/registros/register", (req, res) => {
     password,
   };
 
-  const sql =
-    "INSERT INTO register (name, password) VALUES (?, ?)";
+  const sql = "INSERT INTO register (name, password) VALUES (?, ?)";
   const values = [name, password];
 
   db.query(sql, values, (err, result) => {
@@ -62,32 +59,30 @@ app.post("/registros/register", (req, res) => {
 
     novoRegistro.id = result.insertId;
 
-    // Agora, você tem o 'id' gerado para o usuário
     res.status(201).json(novoRegistro);
   });
 });
 
-// Rota para inserir registros na tabela 'register_water'
 app.post("/registros/register_water", (req, res) => {
   const { name, quantidade_ml, data, register_id } = req.body;
 
   if (!name || !quantidade_ml || !data || !register_id) {
     return res
       .status(400)
-      .json({ mensagem: "name, quantidade, data e register_id são obrigatórios." });
+      .json({
+        mensagem: "name, quantidade, data e register_id são obrigatórios.",
+      });
   }
 
-  // Converter a data para o formato do MySQL (ano-mês-dia)
   const dataFormatada = data.split("/").reverse().join("-");
 
   const novoRegistro = {
     name,
     quantidade_ml,
-    data: dataFormatada, // Data no formato ano-mês-dia
+    data: dataFormatada,
     register_id,
   };
 
-  // Certifique-se de que o 'register_id' seja válido, pois ele deve corresponder ao 'id' da tabela 'register'
   const checkSql = "SELECT id, name FROM register WHERE id = ?";
   db.query(checkSql, [register_id], (checkErr, checkResult) => {
     if (checkErr || checkResult.length === 0) {
@@ -96,7 +91,6 @@ app.post("/registros/register_water", (req, res) => {
 
     const nomeRegistro = checkResult[0].name;
 
-    // Verifique se o nome fornecido corresponde ao nome na tabela 'register'
     if (name !== nomeRegistro) {
       return res.status(400).json({ mensagem: "Nome de registro inválido." });
     }
@@ -107,7 +101,10 @@ app.post("/registros/register_water", (req, res) => {
 
     db.query(insertSql, insertValues, (err, result) => {
       if (err) {
-        console.error("Erro ao inserir registro na tabela 'register_water':", err);
+        console.error(
+          "Erro ao inserir registro na tabela 'register_water':",
+          err
+        );
         return res
           .status(500)
           .json({ mensagem: "Erro ao registrar na tabela 'register_water'." });
@@ -119,7 +116,6 @@ app.post("/registros/register_water", (req, res) => {
   });
 });
 
-// Rota para recuperar informações das duas tabelas
 app.get("/registros/:nome", (req, res) => {
   const { nome } = req.params;
   const sql =
