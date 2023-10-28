@@ -1,9 +1,20 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const mysql = require("mysql2");
+const cors = require("cors");
 
 const app = express();
 const port = process.env.PORT || 7000;
+
+app.use(
+  cors({
+    origin: "*", // Defina o domínio específico que deseja permitir ou "*" para permitir qualquer origem
+    methods: "GET,HEAD,PUT,PATCH,POST,DELETE", // Métodos permitidos
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
+  })
+);
+
 
 const db = mysql.createConnection({
   host: "bancomysql.c1rmsxzyhbjb.us-east-2.rds.amazonaws.com",
