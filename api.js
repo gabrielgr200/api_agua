@@ -116,6 +116,20 @@ app.post("/registros/register_water", (req, res) => {
   });
 });
 
+app.get("/registros/register", (req, res) => {
+  const sql = "SELECT * FROM register";
+
+  db.query(sql, (err, result) => {
+    if (err) {
+      console.error("Erro ao consultar registros na tabela 'register':", err);
+      return res
+        .status(500)
+        .json({ mensagem: "Erro ao buscar registros na tabela 'register'." });
+    }
+    res.json(result);
+  });
+});
+
 app.get("/registros/:nome", (req, res) => {
   const { nome } = req.params;
   const sql =
