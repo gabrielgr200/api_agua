@@ -2,6 +2,7 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const mysql = require("mysql2");
 const cors = require("cors");
+const bcrypt = require("bcrypt");
 
 const app = express();
 const port = process.env.PORT || 7000;
@@ -41,25 +42,32 @@ app.post("/registros/register", (req, res) => {
       .json({ mensagem: "name e password são obrigatórios." });
   }
 
-  const novoRegistro = {
-    name,
-    password,
-  };
-
-  const sql = "INSERT INTO register (name, password) VALUES (?, ?)";
-  const values = [name, password];
-
-  db.query(sql, values, (err, result) => {
-    if (err) {
-      console.error("Erro ao inserir registro na tabela 'register':", err);
-      return res
-        .status(500)
-        .json({ mensagem: "Erro ao registrar na tabela 'register'." });
+  bcrypt.hash(password, 10, (hashErr, hashedPassword) => {
+    if (hashErr) {
+      console.error("Erro ao criar hash da senha:", hashErr);
+      return res.status(500).json({ mensagem: "Erro ao criar hash da senha." });
     }
 
-    novoRegistro.id = result.insertId;
+    const novoRegistro = {
+      name,
+      password: hashedPassword,
+    };
 
-    res.status(201).json(novoRegistro);
+    const sql = "INSERT INTO register (name, password) VALUES (?, ?)";
+    const values = [name, novoRegistro.password];
+
+    db.query(sql, values, (err, result) => {
+      if (err) {
+        console.error("Erro ao inserir registro na tabela 'register':", err);
+        return res
+          .status(500)
+          .json({ mensagem: "Erro ao registrar na tabela 'register'." });
+      }
+
+      novoRegistro.id = result.insertId;
+
+      res.status(201).json(novoRegistro);
+    });
   });
 });
 
@@ -67,11 +75,9 @@ app.post("/registros/register_water", (req, res) => {
   const { name, quantidade_ml, data, register_id } = req.body;
 
   if (!name || !quantidade_ml || !data || !register_id) {
-    return res
-      .status(400)
-      .json({
-        mensagem: "name, quantidade, data e register_id são obrigatórios.",
-      });
+    return res.status(400).json({
+      mensagem: "name, quantidade, data e register_id são obrigatórios.",
+    });
   }
 
   const dataFormatada = data.split("/").reverse().join("-");
