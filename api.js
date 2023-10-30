@@ -7,7 +7,14 @@ const bcrypt = require("bcrypt");
 const app = express();
 const port = process.env.PORT || 7000;
 
-
+app.use(
+  cors({
+    origin: "*",
+    methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
+  })
+);
 
 const db = mysql.createConnection({
   host: "bancomysql.c1rmsxzyhbjb.us-east-2.rds.amazonaws.com",
